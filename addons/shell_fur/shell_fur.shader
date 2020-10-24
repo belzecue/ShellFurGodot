@@ -2,17 +2,17 @@ shader_type spatial;
 render_mode depth_draw_alpha_prepass;
 
 uniform sampler2D pattern_texture : hint_black;
-uniform vec4 base_color = vec4(0.43, 0.35, 0.29, 1.0);
-uniform vec4 tip_color = vec4(0.78, 0.63, 0.52, 1.0);
+uniform vec4 base_color : hint_color = vec4(0.43, 0.35, 0.29, 1.0);
+uniform vec4 tip_color : hint_color = vec4(0.78, 0.63, 0.52, 1.0);
 uniform sampler2D color_texture : hint_albedo;
 uniform vec2 color_tiling = vec2(1.0, 1.0);
 uniform sampler2D length_texture : hint_white;
 uniform vec2 length_tiling = vec2(1.0, 1.0);
 uniform vec4 transmission = vec4(0.3, 0.3, 0.3, 1.0);
 uniform float roughness = 1.0;
-uniform float normal_correction = 0.0;
+uniform float normal_adjustment = 0.0;
 uniform float density = 5.0;
-uniform float thickness_base = 0.65;
+uniform float thickness_base = 0.75;
 uniform float thickness_tip = 0.3;
 uniform float fur_length = 0.5;
 uniform float length_rand = 0.3;
@@ -80,11 +80,11 @@ void vertex() {
 		// Rescaling the color values into vectors.
 		extrusion_vec = ((vec3(COLOR.xyz) * 2.0 - 1.0) * blend_shape_multiplier); 
 		
-		vec3 normal_biased_extrude = mix(NORMAL * blend_shape_multiplier, extrusion_vec.xyz, lod_adjusted_layer_value);
+		vec3 normal_biased_extrude = mix(NORMAL * blend_shape_multiplier, extrusion_vec, lod_adjusted_layer_value);
 		vec3 interpolated_extrude = mix(extrusion_vec, normal_biased_extrude, smoothstep(0.0, 2.0, normal_bias));
 		vec3 offset_from_surface = interpolated_extrude * fur_length / float(layers);
 		VERTEX += (vec4(interpolated_extrude * fur_length * lod_adjusted_layer_value + offset_from_surface, 0.0) * physics_rot_offset).xyz;
-		VERTEX -= fur_contract * NORMAL * fur_length;
+		VERTEX -= fur_contract * extrusion_vec * fur_length;
 		
 		vec3 winduv = VERTEX * wind_scale;
 		winduv.y += TIME * wind_speed;	
@@ -102,7 +102,7 @@ void fragment() {
 		discard;
 	}
 	
-	NORMAL = mix(NORMAL, projectOnPlane(VIEW, extrusion_vec.xyz), normal_correction);
+	NORMAL = mix(NORMAL, projectOnPlane(VIEW, extrusion_vec.xyz), normal_adjustment);
 	
 	ALBEDO = (texture(color_texture, UV * color_tiling) * mix(base_color, tip_color, lod_adjusted_layer_value)).rgb;
 	TRANSMISSION = transmission.rgb;
